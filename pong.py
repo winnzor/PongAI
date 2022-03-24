@@ -1,3 +1,27 @@
+"""
+Ryan Winnicki
+March 2022
+
+
+This file contains all the classes to play a game simmilar to the classical game pong. This game is a single player game where 
+the Player attempts to keep two balls "up", or from colliding with the ground. The player recieves a point for each successful paddle collision.
+
+Game runs at maximum 30 frames per second.
+
+Usually, there is a continual while loop to update the frame at each tick.
+This is replaced by the play_step() function in the PlayGame() class so that information can be passed 
+to the model before the next "step" or frame in the game.
+
+Classes:
+    Window() - draws the background, walls, and score of the game.
+    Player() - The player is the paddle at the bottom of the screen. The class stores all information of the Player.
+    Ball() - draws and contains all the information of the ball. There are two balls in this game.
+    PlayGame() - contains all the functions to properly play the game at each step and reset the game if loss occurs.
+
+"""
+
+
+
 from time import time, sleep
 import pygame
 import os
@@ -5,60 +29,109 @@ import time
 import random
 
 
-
 pygame.init()
 pygame.font.init()
 
+# Setting colors that are used in drawing the game. 
 BLACK = (0,0,0)
 WHITE = (255,255,255)
-IDK = (100,100,100)
+GREY = (100,100,100)
 
+#Setting the Window dimensions
 WIN_WIDTH = 600
 WIN_HEIGHT = 800
+
+#Setting the Wall dimensions
 LINE_WIDTH = 10
-SPEED = 60
+
+#Setting the font that will output the score.
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 ND_FONT = pygame.font.SysFont("comicsans", 70)
-DRAW_LINES = False
+
+#Setting the Size of the Window and Caption
 WIN = pygame.display.set_mode((WIN_WIDTH+LINE_WIDTH, WIN_HEIGHT+LINE_WIDTH))
 pygame.display.set_caption("Pong")
 
 
 class Window():
+    """
 
+    This is the drawing of the background, walls, and score text. The actual window is created when game is initiated.
 
+    """
+    
     def __init__(self, wn, player):
+        """
+        This initiates the draw of the background, wall, and score text.
+
+            Args:
+                wn - window that we are currently playing in.
+                player - player information to get score.
+        """
         self.background = pygame.Surface(wn.get_size())
         self.background = self.background.convert()
         self.background.fill(BLACK)
         
-        # top line
-        pygame.draw.rect(self.background, IDK, [0,0,WIN_WIDTH,LINE_WIDTH])
+        # Top Wall
+        pygame.draw.rect(self.background, GREY, [0,0,WIN_WIDTH,LINE_WIDTH])
        
-        # left line
-        pygame.draw.rect(self.background, IDK, [0,0,LINE_WIDTH, WIN_HEIGHT])
-        # right line
-        pygame.draw.rect(self.background, IDK, [WIN_WIDTH,0,LINE_WIDTH, WIN_HEIGHT+LINE_WIDTH])
+        # Left Wall
+        pygame.draw.rect(self.background, GREY, [0,0,LINE_WIDTH, WIN_HEIGHT+LINE_WIDTH])
+
+        # Right Wall
+        pygame.draw.rect(self.background, GREY, [WIN_WIDTH,0,LINE_WIDTH, WIN_HEIGHT+LINE_WIDTH])
         
         self.score_label = STAT_FONT.render("Score: " + str(player.getScore()), 1 , (WHITE))
         wn.blit(self.score_label, (WIN_WIDTH - self.score_label.get_width() - 15, 10))
         wn.blit(self.background, (0, 0))
 
     def draw(self, wn, player):
+        """
+        Updates the background and score text.
+
+        --MUST UPDATE BACKGROUND-- 
+        The player and balls will leave their remnants behind.
+
+            Args:
+                wn - window that we are currently playing in.
+                player - player information to get score.
+        """
         self.score_label = STAT_FONT.render("Score: " + str(player.getScore()), 1 , (WHITE))
         wn.blit(self.background, (0,0))
         wn.blit(self.score_label, (WIN_WIDTH - self.score_label.get_width() - 15, 10))
 
+
+
+
+
 class Player:
-    VEL =  30 % 780
+
+    """
+    Player is the paddle at the bottom of the game.
+
+    Most functions are getters and setters besides movement and drawing. Collisions are tracked in the Ball Class.
+    """
+
+    #The speed at which the paddle will move. Trial and Error determined this was the best velocity so that the paddle smoothly stopped at boundries
+    VEL =  30
+
+    #Paddle dimensions
     PAD_WIDTH = 90
     PAD_HEIGHT = 10
+
+    #Tracks Reward
     REWARD = 0
+
+    #Tracks Score
     SCORE = 0
 
     def __init__(self, x, y):
         """
-        Initialize the object
+        Initialize the player object.
+
+        x - x cordinates of player
+        y - y cordinates of player
+
         """
         self.Score = self.SCORE
         self.x = x
@@ -113,19 +186,38 @@ class Player:
         return self.x
 
 class Ball:
+    """
+    Balls are the objects the Player attempts to keep up.
+
+    Movement and collisions with Player/Walls is tracked here. The balls speed up(increase velocity) as more collisions happen to increase difficulty.
+    Max velocity of 8. Walls will increase velocity in the x direction and player/ceiling will increase velocity in y direction. Colliding with another 
+    ball will increase velocity in both directions.
+    """
+
+    #Ball Dimensions
     BALL_WIDTH = 20
     BALL_HEIGHT = 20
     RADIUS = 10
+
+    #Ball Velocity
+    # DX (+) = moving right, (-) = moving left.
+    # DY (+) = moving up, (-) = moving down.
     DX = -2.3
     DY = 2
+    MAX_VELOCITY = 8
 
-    def __init__(self, x, y, start):
+
+    def __init__(self, x, y, startDirection):
+        """
+        Initiates the x and y coordinates of the ball as well as the start direction.
+        Creates a vector for later use when there is ball collisions.
+        """
         self.x = x
         self.y = y
         self.tickCount = 0
         self.v1 = pygame.math.Vector2(self.x, self.y)
-        self.Dx = self.DX*start
-        self.Dy = self.DY*start
+        self.Dx = self.DX*startDirection
+        self.Dy = self.DY*startDirection
         self.ball = pygame.Surface((round(self.BALL_WIDTH), round(self.BALL_HEIGHT)))
         pygame.draw.circle(self.ball, pygame.Color("White"), (int(self.BALL_WIDTH/2),
                                                                  int(self.BALL_HEIGHT/2))
@@ -145,10 +237,10 @@ class Ball:
         return self.x, self.y
 
     def changeSpeed(self, x, y):
-        if(self.Dx < 8 or self.Dx > -8):
+        if(self.Dx < self.MAX_VELOCITY or self.Dx > -self.MAX_VELOCITY):
             r = random.uniform(1.0, 1.3)
             self.Dx *= r*x
-        if(self.Dy < 8 or self.Dy > -8):
+        if(self.Dy < self.MAX_VELOCITY or self.Dy > -self.MAX_VELOCITY):
             r = random.uniform(1.0, 1.3)
             self.Dy *= r*y
 
@@ -161,6 +253,8 @@ class Ball:
                     nv = b.getVector()- self.v1
                     m1 = pygame.math.Vector2(self.Dx, self.Dy).reflect(nv)
                     m2 = pygame.math.Vector2(bx, by).reflect(nv)
+
+                    #Sets new velocity of each ball, increasing speed in both directions.
                     self.Dx, self.Dy = m1.x*1.1, m1.y*1.1
                     b.setDxDy(m2.x, m2.y)
                     
@@ -212,6 +306,8 @@ class Ball:
 
     def draw(self, wn):
         wn.blit(self.ball, (self.x,self.y))
+
+
 
 def drawWindow(wn, bg, player, balls):
     bg.draw(wn, player)
