@@ -1,8 +1,8 @@
 """
 Ryan Winnicki
-August 2021
 
-AI created using Pytorch that plays a pong type game in pygame
+Q-learning Agent created using Pytorch that plays a pong type game in pygame. 
+This file contains the main function to run the program.
 
 """
 
@@ -17,8 +17,8 @@ from model import Linear_Qnet, QTrainer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MAX_MEMORY = 1000000
-BATCH_SIZE = 100
-LR = .005
+BATCH_SIZE = 1000
+LR = .001
 
 #agent
 class Agent:
@@ -37,9 +37,9 @@ class Agent:
         
         self.n_games = 0
         self.epsilon = 0 #randomness
-        self.gamma = .1 #discount rate
+        self.gamma = .8 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY) #popleft if goes over memory
-        self.model = Linear_Qnet(5, 32, 3)
+        self.model = Linear_Qnet(7, 16, 3)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
         self.model.cuda()
@@ -67,15 +67,28 @@ class Agent:
         ball1 = game.getBall1()
         ball2 = game.getBall2()
 
-        px = player.getX()
+        px, py, pw, ph = player.getPlayerInfo()
         b1x, b1y = ball1.getXY()
-        b1mx, b1my = ball1.getDxDy()
         b2x, b2y = ball2.getXY()
-        b2mx, b2my = ball2.getDxDy()
 
-        state = [px, b1x, b1y, b2x, b2y]
+        state = [
+        #player under ball1
+        (px < b1x and b1x < (px+pw)),
+        #player left of ball1
+        ((px+pw) < b1x),
+        #player right of ball1
+        (px > b1x),
+        #player under ball2
+        (px < b2x and b2x < (px+pw)),
+        #player left of ball2
+        ((px+pw) < b2x),
+        #player right of ball2
+        (px > b2x),
+        #ball1 closer to player than ball2
+        (b1y < b2y)
+        ]
 
-        return np.array(state,dtype=float)
+        return np.array(state,dtype=int)
 
         
 
@@ -98,23 +111,22 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 200 - self.n_games**1.5
-        final_move = 0
+        self.epsilon = 300 - self.n_games
+        final_move = [0,0,0]
         if random.randint(0, 200) < self.epsilon:
             move = random.randint(0, 2)
+            final_move[move] = 1
             if move == 0:
                 self.r_left +=1
             elif move == 1:
                 self.r_nothing +=1
             elif move == 2:
                 self.r_right +=1
-        
-            final_move = move
         else:
             state0 = torch.tensor(state, dtype=torch.float, device=device)
             prediction = self.model(state0)
             move = torch.argmax(prediction).item()
-            final_move = move
+            final_move[move] = 1
             if move == 0:
                 self.c_left +=1
             elif move == 1:
@@ -133,14 +145,23 @@ def train():
     game = playGame()
 
     while True:
+        #Get Old State
         state_old = agent.get_state(game)
+
+        #Get Move
         final_move = agent.get_action(state_old)
+
+        #preform move and get new State
         reward, done, score = game.play_step(final_move)
         state_new = agent.get_state(game)
 
+        #Set score to Agent
         agent.setScore(score)
         
+        #train short term memory
         agent.train_short_memory(state_old, final_move, reward, state_new, done)
+        
+        #rememeber
         agent.remember(state_old, final_move, reward, state_new, done)
 
         if done:
