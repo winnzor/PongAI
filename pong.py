@@ -6,7 +6,7 @@ March 2022
 This file contains all the classes to play a game simmilar to the classical game pong. This game is a single player game where 
 the Player attempts to keep two balls "up", or from colliding with the ground. The player recieves a point for each successful paddle collision.
 
-Game runs at maximum 30 frames per second.
+Game runs at maximum 100 frames per second.
 
 Usually, there is a continual while loop to update the frame at each tick.
 This is replaced by the play_step() function in the PlayGame() class so that information can be passed 
@@ -162,17 +162,17 @@ class Player:
         self.Score = 0
 
     def moveLeft(self):
+        #self.addReward(-.1)
         if self.x > LINE_WIDTH:
             self.x -= self.VEL
         else:
-            self.addReward(-1)
             self.x = LINE_WIDTH
 
     def moveRight(self):
+        #self.addReward(-.1)
         if self.x < WIN_WIDTH - LINE_WIDTH- self.PAD_WIDTH:
             self.x += self.VEL
         else:
-            self.addReward(-1)
             self.x = WIN_WIDTH - LINE_WIDTH- self.PAD_WIDTH
 
     def getPlayerInfo(self):
@@ -211,6 +211,7 @@ class Ball:
         """
         Initiates the x and y coordinates of the ball as well as the start direction.
         Creates a vector for later use when there is ball collisions.
+        Will need to change wall and player collision later on to use vectors. May be more optimal.
         """
         self.x = x
         self.y = y
@@ -268,12 +269,8 @@ class Ball:
                 self.changeSpeed(1, -1)
                 self.y = player.getY() - player.getHeight() - 3
                 player.addScore()
-                player.addReward(100)
+                player.addReward(10)
             elif self.collide_floor():
-                self.y = WIN_HEIGHT/2
-                self.x = WIN_WIDTH/2
-                self.Dy = self.DY*-1
-                self.Dx = self.DX
                 return True
             else:
                 self.x = self.x + self.Dx
@@ -281,8 +278,6 @@ class Ball:
             self.v1 = pygame.math.Vector2(self.x, self.y)
             return False
             
-
-
     def collide_wall(self):
         if self.x > 10 and self.x+self.BALL_WIDTH < WIN_WIDTH:
             return False
@@ -337,12 +332,18 @@ class playGame:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-                
-        if action == 0:
-            self.player.addReward(-.1)
+        
+        move = 0
+        if action[0] == 1:
+            move = 0
+        elif action[1] == 1:
+            move = 1
+        elif action[2] == 1:
+            move = 2
+
+        if move == 0:
             self.player.moveLeft()
-        if action == 2:
-            self.player.addReward(-.1)
+        if move == 2:
             self.player.moveRight()
                 
         for ball in self.balls:
@@ -353,7 +354,7 @@ class playGame:
                 return self.player.getReward(), game_over, self.player.getScore()
                 
         drawWindow(WIN, self.bg, self.player, self.balls)
-        self.fps.tick(30)
+        self.fps.tick(100)
         return self.player.getReward(), game_over, self.player.getScore()
 
            
