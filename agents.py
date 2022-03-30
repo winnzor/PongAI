@@ -37,9 +37,9 @@ class Agent:
         
         self.n_games = 0
         self.epsilon = 0 #randomness
-        self.gamma = .8 #discount rate
+        self.gamma = .9 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY) #popleft if goes over memory
-        self.model = Linear_Qnet(7, 16, 3)
+        self.model = Linear_Qnet(7, 64, 3)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
         self.model.cuda()
@@ -111,7 +111,7 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 300 - self.n_games
+        self.epsilon = 200 - self.n_games
         final_move = [0,0,0]
         if random.randint(0, 200) < self.epsilon:
             move = random.randint(0, 2)
@@ -137,6 +137,7 @@ class Agent:
         return final_move
 
 def train():
+    totalReward = 0
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
@@ -163,6 +164,8 @@ def train():
         
         #rememeber
         agent.remember(state_old, final_move, reward, state_new, done)
+        #tracking total reward for session to see if we have improvement 
+        totalReward += reward
 
         if done:
             agent.addGame()
@@ -173,13 +176,14 @@ def train():
                 agent.model.save()
             print("RL: ", agent.r_left, "RN: ", agent.r_nothing, "RR: ",agent.r_right)
             print("CL: ", agent.c_left, "CN: ", agent.c_nothing, "CR: ",agent.c_right)
-            print("Game: ", agent.getGames(), 'Score: ', agent.getScore(), 'Record:', agent.getRecord(), "Reward: ", reward)
+            print("Game: ", agent.getGames(), 'Score: ', agent.getScore(), 'Record:', agent.getRecord(), "Reward: ", totalReward)
             agent.r_left = 0
             agent.r_nothing = 0
             agent.r_right = 0
             agent.c_left = 0
             agent.c_nothing = 0
             agent.c_right = 0
+            totalReward = 0
             agent.setScore(0)
             game.reset()
 
