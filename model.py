@@ -25,8 +25,8 @@ class Linear_Qnet(nn.Module):
         torch.save(self.state_dict(), file_name)
 
         #prints state_dict
-        for param_tensor in self.state_dict():
-            print(param_tensor, "\t", self.state_dict()[param_tensor].size())
+        #for param_tensor in self.state_dict():
+        #    print(param_tensor, "\t", self.state_dict()[param_tensor].size())
 
 
 class QTrainer:
