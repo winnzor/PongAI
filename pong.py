@@ -146,6 +146,9 @@ class Player:
     def getHeight(self):
         return self.PAD_HEIGHT
 
+    def resetReward(self):
+        self.reward = 0
+
     def addReward(self, r):
         self.reward += r
 
@@ -190,7 +193,7 @@ class Ball:
     Balls are the objects the Player attempts to keep up.
 
     Movement and collisions with Player/Walls is tracked here. The balls speed up(increase velocity) as more collisions happen to increase difficulty.
-    Max velocity of 8. Walls will increase velocity in the x direction and player/ceiling will increase velocity in y direction. Colliding with another 
+    Max velocity of 4. Walls will increase velocity in the x direction and player/ceiling will increase velocity in y direction. Colliding with another 
     ball will increase velocity in both directions.
     """
 
@@ -204,7 +207,7 @@ class Ball:
     # DY (+) = moving up, (-) = moving down.
     DX = -2.3
     DY = 2
-    MAX_VELOCITY = 8
+    MAX_VELOCITY = 4
 
 
     def __init__(self, x, y, startDirection):
@@ -239,10 +242,10 @@ class Ball:
 
     def changeSpeed(self, x, y):
         if(self.Dx < self.MAX_VELOCITY or self.Dx > -self.MAX_VELOCITY):
-            r = random.uniform(1.0, 1.3)
+            r = random.uniform(1.0, 1.1)
             self.Dx *= r*x
         if(self.Dy < self.MAX_VELOCITY or self.Dy > -self.MAX_VELOCITY):
-            r = random.uniform(1.0, 1.3)
+            r = random.uniform(1.0, 1.1)
             self.Dy *= r*y
 
     def move(self, balls, player):
@@ -255,8 +258,8 @@ class Ball:
                     m1 = pygame.math.Vector2(self.Dx, self.Dy).reflect(nv)
                     m2 = pygame.math.Vector2(bx, by).reflect(nv)
 
-                    #Sets new velocity of each ball, increasing speed in both directions.
-                    self.Dx, self.Dy = m1.x*1.1, m1.y*1.1
+                    #Sets new velocity of each ball
+                    self.Dx, self.Dy = m1.x, m1.y
                     b.setDxDy(m2.x, m2.y)
                     
             if self.collide_wall():
@@ -290,6 +293,7 @@ class Ball:
 
     def collide_player(self, player):
         px, py, pw, ph = player.getPlayerInfo()
+        #if ball is inbetween player's y and y-height and ball is between player's x coordinates
         if (self.y > py-ph-2 and self.y < py) and (self.x < px+pw and self.x > px):
            return True
         return False
@@ -327,6 +331,7 @@ class playGame:
 
     def play_step(self, action):
         game_over = False
+        self.player.resetReward()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -340,12 +345,11 @@ class playGame:
             move = 1
         elif action[2] == 1:
             move = 2
-
         if move == 0:
             self.player.moveLeft()
         if move == 2:
             self.player.moveRight()
-                
+
         for ball in self.balls:
             check_game_over = ball.move(self.balls, self.player)
             if check_game_over:
